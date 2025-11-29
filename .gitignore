@@ -1,0 +1,39 @@
+# Large ontology files - don't track these
+Imports/MESH.csv
+desc2025/desc2025.xml
+
+# Optionally all XML/CSV ontology dumps
+Imports/*.csv
+Imports/*.xml
+desc2025/
+
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments
+venv/
+.env/
+.venv/
+
+# IDE files
+.vscode/
+.idea/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Ontology files (avoid uploading huge MeSH/UMLS downloads)
+Imports/*.xml
+data/*.xml
+*.ttl
+*.rdf
+
+# UMLS license-protected stuff
+UMLS/
+umls/
+metathesaurus/
+
+
