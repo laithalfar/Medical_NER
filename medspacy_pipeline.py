@@ -205,6 +205,7 @@ class MedspacyNERPipeline:
     mesh_max_records: Optional[int] = None
     mesh_include_terms: Sequence[str] | None = None
     allowed_entity_types: Optional[Sequence[str]] = None
+    kb_json_paths: Optional[Sequence[str | Path]] = None
     _allowed_entity_types: Optional[Set[str]] = field(init=False, repr=False, default=None)
 
     # Initialize variables with values
@@ -251,6 +252,10 @@ class MedspacyNERPipeline:
         # If knowledge base is None and mesh_descriptor_path is None load demo entries into new knowledge base    
         else:
             self.knowledge_base = MedicalKnowledgeBase.with_demo_entries() 
+        if self.kb_json_paths:
+            for json_path in self.kb_json_paths:
+                entries = load_kb_entries_from_json(json_path)
+                self.knowledge_base.merge_entries(entries)
 
     # Private method to bootstrap rules from knowledge base.
     # bootstrapping is a technique of loading a program by means of a few initial instructions which enable 
@@ -393,6 +398,28 @@ include_terms: Sequence[str] | None = None) -> List[KBEntry]:
 
     # log the number of entries loaded from an XML path
     LOGGER.info("Loaded %d MeSH descriptors from %s", len(entries), xml_path)
+    return entries
+
+# load entries from json files
+def load_kb_entries_from_json(path: str | Path) -> List[KBEntry]:
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    entries: List[KBEntry] = []
+    for record in data:
+        if isinstance(record, KBEntry):
+            entries.append(record)
+            continue
+        if isinstance(record, dict):
+            entries.append(
+                KBEntry(
+                    concept_id=str(record["concept_id"]),
+                    canonical_name=str(record["canonical_name"]),
+                    entity_type=str(record.get("entity_type") or record.get("label") or "ENTITY").upper(),
+                    synonyms=list(record.get("synonyms", [])),
+                    description=record.get("description"),
+                    ontology=record.get("ontology", "CUSTOM"),
+                    cui=record.get("cui") or record.get("umls_cui"),
+                )
+            )
     return entries
 
 # Function to load MeSH-UMLS mapping
@@ -544,6 +571,135 @@ _DEFAULT_KB_ENTRIES = [
         "entity_type": "DISEASE",
         "synonyms": ["diabetes", "dm"],
         "description": "Metabolic disorders characterized by hyperglycemia.",
+    },
+]
+
+_TARGETED_GAZETTEER_ENTRIES = [
+    {
+        "concept_id": "GAZ:DATE:RECENT",
+        "canonical_name": "recent date reference",
+        "entity_type": "DATE",
+        "synonyms": [
+            "today",
+            "yesterday",
+            "tomorrow",
+            "last night",
+            "last week",
+            "last month",
+            "this morning",
+            "this afternoon",
+        ],
+        "description": "Common temporal expressions often missed by literal KB entries.",
+        "ontology": "GAZETTEER",
+    },
+    {
+        "concept_id": "GAZ:TIME:GENERIC",
+        "canonical_name": "time reference",
+        "entity_type": "TIME",
+        "synonyms": [
+            "midnight",
+            "noon",
+            "8:00",
+            "8 am",
+            "8 pm",
+            "in the evening",
+            "in the morning",
+        ],
+        "description": "Generic time-of-day mentions.",
+        "ontology": "GAZETTEER",
+    },
+    {
+        "concept_id": "GAZ:DURATION:COMMON",
+        "canonical_name": "duration reference",
+        "entity_type": "DURATION",
+        "synonyms": [
+            "for two weeks",
+            "for three days",
+            "for several months",
+            "for one year",
+            "for a few hours",
+            "for many years",
+        ],
+        "description": "Common duration phrases.",
+        "ontology": "GAZETTEER",
+    },
+    {
+        "concept_id": "GAZ:FREQUENCY:COMMON",
+        "canonical_name": "frequency reference",
+        "entity_type": "FREQUENCY",
+        "synonyms": [
+            "twice daily",
+            "once daily",
+            "three times a day",
+            "every day",
+            "every other day",
+            "every morning",
+            "every evening",
+            "every 8 hours",
+        ],
+        "description": "Typical medication frequency phrases.",
+        "ontology": "GAZETTEER",
+    },
+    {
+        "concept_id": "GAZ:DOSAGE:GENERIC",
+        "canonical_name": "dosage value",
+        "entity_type": "DOSAGE",
+        "synonyms": [
+            "5 mg",
+            "10 mg",
+            "20 mg",
+            "500 mg",
+            "1 g",
+            "2 g",
+            "10 ml",
+            "50 units",
+        ],
+        "description": "Representative dosage literals to seed detection rules.",
+        "ontology": "GAZETTEER",
+    },
+    {
+        "concept_id": "GAZ:LAB_VALUE:GENERIC",
+        "canonical_name": "lab value reference",
+        "entity_type": "LAB_VALUE",
+        "synonyms": [
+            "normal range",
+            "within normal limits",
+            "elevated levels",
+            "low levels",
+            "abnormal labs",
+            "critical value",
+        ],
+        "description": "Common lab value descriptors.",
+        "ontology": "GAZETTEER",
+    },
+    {
+        "concept_id": "GAZ:HISTORY:GENERIC",
+        "canonical_name": "history reference",
+        "entity_type": "HISTORY",
+        "synonyms": [
+            "family history",
+            "medical history",
+            "past medical history",
+            "surgical history",
+            "social history",
+        ],
+        "description": "Key phrases introducing history statements.",
+        "ontology": "GAZETTEER",
+    },
+    {
+        "concept_id": "GAZ:OUTCOME:GENERIC",
+        "canonical_name": "outcome reference",
+        "entity_type": "OUTCOME",
+        "synonyms": [
+            "improved",
+            "resolved",
+            "worsened",
+            "deteriorated",
+            "stable",
+            "no change",
+        ],
+        "description": "Outcome adjectives appearing in discharge summaries.",
+        "ontology": "GAZETTEER",
     },
 ]
 

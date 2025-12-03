@@ -127,6 +127,6 @@ class PreprocessingPipeline:
 
 if __name__ == "__main__":
     # Eagerly ensure the dataset is ready when the module is imported in scripts.
-    ensure_dataset()
+    ensure_dataset() 
 
 
